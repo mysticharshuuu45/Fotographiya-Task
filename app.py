@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import subprocess
 from PIL import Image, ImageDraw, ImageFont
 import boto3
 import zipfile
@@ -73,6 +74,26 @@ class PhotoProcessor:
                     zipf.write(os.path.join(root, file), arcname=file)
         print(f"Photos packaged into {zip_filename}")
 
+def clone_repo(repo_url, target_dir):
+    if not os.path.exists(target_dir):
+        print(f"Cloning repository from {repo_url} into {target_dir}...")
+        result = subprocess.run(["git", "clone", repo_url, target_dir])
+        if result.returncode != 0:
+            print("Failed to clone repository.")
+        else:
+            print("Repository cloned successfully.")
+    else:
+        print(f"Repository {target_dir} already exists.")
+
 if __name__ == "__main__":
-    processor = PhotoProcessor()
+    # Clone the GitHub repository containing the images
+    repo_url = "https://github.com/mysticharshuuu45/Fotographiya-Task.git"
+    target_dir = "Fotographiya-Task"
+    clone_repo(repo_url, target_dir)
+
+    # Use images from the cloned repo if available, otherwise fallback to local 'photos' folder.
+    photos_dir = os.path.join(target_dir, "photos")
+    input_directory = photos_dir if os.path.exists(photos_dir) else "photos"
+
+    processor = PhotoProcessor(input_dir=input_directory)
     processor.process_batch()
