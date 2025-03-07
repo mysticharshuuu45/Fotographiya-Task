@@ -3,7 +3,6 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      docker: 26
       python: 3.11
     commands:
       - apt-get update -y
