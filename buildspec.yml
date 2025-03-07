@@ -11,15 +11,15 @@ phases:
   pre_build:
     commands:
       - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 440744238830.dkr.ecr.ap-south-1.amazonaws.com
   build:
     commands:
       - echo "Building Docker image..."
       - docker build -t fotographiya-app -f Dockerfile .
-      - docker tag fotographiya-app:latest <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
+      - docker tag fotographiya-app:latest 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
   post_build:
     commands:
       - echo "Pushing Docker image to Amazon ECR..."
-      - docker push <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
+      - docker push 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
       - echo "Updating running container on EC2..."
-      - aws ssm send-command --document-name "AWS-RunShellScript" --targets '[{"Key":"tag:Name","Values":["Fotographiya-App-Server"]}]' --parameters '{"commands":["docker pull <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest","docker stop fotographiya-container || true","docker rm fotographiya-container || true","docker run -d --restart always --name fotographiya-container -p 80:5000 <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest"]}' --region ap-south-1
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets '[{"Key":"tag:Name","Values":["Fotographiya-App-Server"]}]' --parameters '{"commands":["docker pull 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest","docker stop fotographiya-container || true","docker rm fotographiya-container || true","docker run -d --restart always --name fotographiya-container -p 80:5000 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest"]}' --region ap-south-1
