@@ -8,18 +8,27 @@ phases:
       - apt-get update -y
       - apt-get install -y python3 python3-pip
       - pip3 install -r requirements.txt
+
   pre_build:
     commands:
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 440744238830.dkr.ecr.ap-south-1.amazonaws.com
+
   build:
     commands:
       - echo "Building Docker image..."
       - docker build -t fotographiya-app -f Dockerfile .
       - docker tag fotographiya-app:latest 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
+
   post_build:
     commands:
       - echo "Pushing Docker image to Amazon ECR..."
       - docker push 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
       - echo "Updating running container on EC2..."
       - aws ssm send-command --document-name "AWS-RunShellScript" --targets '[{"Key":"tag:Name","Values":["Fotographiya-App-Server"]}]' --parameters '{"commands":["docker pull 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest","docker stop fotographiya-container || true","docker rm fotographiya-container || true","docker run -d --restart always --name fotographiya-container -p 80:5000 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest"]}' --region ap-south-1
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: build_outp
+  discard-paths: no
