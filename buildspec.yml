@@ -24,6 +24,9 @@ phases:
     commands:
       - echo "Pushing Docker image to Amazon ECR..."
       - docker push 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
+      - echo "Ensuring build_outp directory exists..."
+      - mkdir -p build_outp
+      - echo "Dummy file to ensure directory exists" > build_outp/dummy.txt
       - echo "Updating running container on EC2..."
       - aws ssm send-command --document-name "AWS-RunShellScript" --targets '[{"Key":"tag:Name","Values":["Fotographiya-App-Server"]}]' --parameters '{"commands":["docker pull 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest","docker stop fotographiya-container || true","docker rm fotographiya-container || true","docker run -d --restart always --name fotographiya-container -p 80:5000 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest"]}' --region ap-south-1
 
