@@ -2,15 +2,14 @@
 # coding: utf-8
 
 import os
-import subprocess
+from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import boto3
 import zipfile
 
 class PhotoProcessor:
-    def __init__(self, input_dir="photos", output_dir="output", watermark_text="Fotographiya", bucket_name="fotographiya-processed-images"):
+    def __init__(self, input_dir="photos", watermark_text="Fotographiya", bucket_name="fotographiya-processed-images"):
         self.input_dir = input_dir
-        self.output_dir = output_dir
         self.watermark_text = watermark_text
         self.bucket_name = bucket_name
         self.formats = [
@@ -18,7 +17,6 @@ class PhotoProcessor:
             ("mobile", (1080, 720), "JPEG"),
             ("print", (300, 300), "PNG"),
         ]
-        os.makedirs(self.output_dir, exist_ok=True)
         self.s3 = boto3.client('s3')
 
     def get_font(self, size=60):
@@ -43,17 +41,21 @@ class PhotoProcessor:
         for format_name, size, img_format in self.formats:
             resized_img = img.copy().resize(size)
             watermarked_img = self.add_watermark(resized_img)
+            
+            # Save image to memory instead of local file
+            img_buffer = BytesIO()
+            watermarked_img.save(img_buffer, format=img_format)
+            img_buffer.seek(0)
+
+            # Generate file name for S3
             output_filename = f"{format_name}_{os.path.splitext(filename)[0]}.{img_format.lower()}"
-            output_path = os.path.join(self.output_dir, output_filename)
-            watermarked_img.save(output_path, img_format)
-            print(f"Saved: {output_path}")
 
-            # Upload the processed image to S3
-            self.upload_to_s3(output_path, output_filename)
+            # Upload directly to S3
+            self.upload_to_s3(img_buffer, output_filename, img_format)
 
-    def upload_to_s3(self, file_path, file_name):
+    def upload_to_s3(self, img_buffer, file_name, img_format):
         try:
-            self.s3.upload_file(file_path, self.bucket_name, file_name)
+            self.s3.upload_fileobj(img_buffer, self.bucket_name, file_name, ExtraArgs={'ContentType': f"image/{img_format.lower()}"})
             print(f"Uploaded {file_name} to S3")
         except Exception as e:
             print(f"Error uploading {file_name} to S3: {e}")
@@ -64,36 +66,7 @@ class PhotoProcessor:
                 img_path = os.path.join(self.input_dir, filename)
                 self.process_image(img_path, filename)
         print("Batch processing completed!")
-        self.zip_output()
-
-    def zip_output(self):
-        zip_filename = "Wedding_Photos_Package.zip"
-        with zipfile.ZipFile(zip_filename, "w") as zipf:
-            for root, _, files in os.walk(self.output_dir):
-                for file in files:
-                    zipf.write(os.path.join(root, file), arcname=file)
-        print(f"Photos packaged into {zip_filename}")
-
-def clone_repo(repo_url, target_dir):
-    if not os.path.exists(target_dir):
-        print(f"Cloning repository from {repo_url} into {target_dir}...")
-        result = subprocess.run(["git", "clone", repo_url, target_dir])
-        if result.returncode != 0:
-            print("Failed to clone repository.")
-        else:
-            print("Repository cloned successfully.")
-    else:
-        print(f"Repository {target_dir} already exists.")
 
 if __name__ == "__main__":
-    # Clone the GitHub repository containing the images
-    repo_url = "https://github.com/mysticharshuuu45/Fotographiya-Task.git"
-    target_dir = "Fotographiya-Task"
-    clone_repo(repo_url, target_dir)
-
-    # Use images from the cloned repo if available, otherwise fallback to local 'photos' folder.
-    photos_dir = os.path.join(target_dir, "photos")
-    input_directory = photos_dir if os.path.exists(photos_dir) else "photos"
-
-    processor = PhotoProcessor(input_dir=input_directory)
+    processor = PhotoProcessor()
     processor.process_batch()
