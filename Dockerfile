@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Install required dependencies
+RUN apt-get update && apt-get install -y git
+
 # Set the working directory
 WORKDIR /app
 
