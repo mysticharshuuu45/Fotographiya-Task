@@ -5,24 +5,15 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Updating package lists..."
       - apt-get update -y
-      - echo "Installing dependencies..."
-      - apt-get install -y python3 python3-pip docker awscli
-      - echo "Installing Python packages..."
-      - pip3 install --no-cache-dir -r requirements.txt
-      - echo "Setting executable permissions for scripts..."
+      - apt-get install -y python3 python3-pip
+      - pip3 install -r requirements.txt
       - mkdir -p scripts && chmod +x scripts/*.sh
 
   pre_build:
     commands:
-      - echo "Checking AWS CLI and Docker availability..."
-      - aws --version
-      - docker --version
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 440744238830.dkr.ecr.ap-south-1.amazonaws.com
-      - echo "Pulling latest image from ECR..."
-      - docker pull 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest || echo "No existing image found, proceeding with build..."
 
   build:
     commands:
@@ -34,16 +25,11 @@ phases:
     commands:
       - echo "Pushing Docker image to Amazon ECR..."
       - docker push 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest
-      - echo "Ensuring build output directory exists..."
+      - echo "Ensuring build_outp directory exists..."
       - mkdir -p build_outp
       - echo "Dummy file to ensure directory exists" > build_outp/dummy.txt
-      - echo "Updating and running container on EC2..."
-      - aws ssm send-command \
-          --document-name "AWS-RunShellScript" \
-          --targets '[{"Key":"tag:Name","Values":["Fotographiya-App-Server"]}]' \
-          --parameters '{"commands":["docker pull 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest","docker stop fotographiya-container || true","docker rm fotographiya-container || true","docker run -d --restart always --name fotographiya-container -p 80:5000 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest"]}' \
-          --region ap-south-1
-      - echo "Deployment completed successfully!"
+      - echo "Updating running container on EC2..."
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets '[{"Key":"tag:Name","Values":["Fotographiya-App-Server"]}]' --parameters '{"commands":["docker pull 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest","docker stop fotographiya-container || true","docker rm fotographiya-container || true","docker run -d --restart always --name fotographiya-container -p 80:5000 440744238830.dkr.ecr.ap-south-1.amazonaws.com/fotographiya-repo:latest"]}' --region ap-south-1
 
 artifacts:
   files:
